@@ -48,6 +48,31 @@ async function run() {
   
       });
     
+    
+
+      app.put("/services/:id", async (req, res) => {
+        const id = req.params.id;
+        const review = req.body;
+  
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const updateReview = {
+          $set: {
+            image: review.image,
+            title: review.title,
+            companyName: review.companyName,
+            website: review.website,
+            description: review.description,
+            category: review.category,
+            price: review.price,
+           
+          
+          },
+        };
+  
+        const result = await serviceCollection.updateOne(filter, updateReview, options);
+        res.send(result);
+      });
 
       app.delete('/services/:id', async (req, res) => {
         const id = req.params.id;
