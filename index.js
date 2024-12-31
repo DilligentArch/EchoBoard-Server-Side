@@ -39,14 +39,29 @@ async function run() {
         res.send(result);
       });
 
-      app.get('/services/:email', async (req, res) => {
-        const  addedBy = req.params.email;
-        const query = { addedBy }
-        const result = await serviceCollection.find(query).toArray();
+      app.get('/services', async (req, res) => {
+        const { email } = req.query;
+    
+        if (email) {
+            const query = { addedBy: email };
+            const result = await serviceCollection.find(query).toArray();
+            return res.send(result);
+        }
+    
+        const cursor = serviceCollection.find();
+        const result = await cursor.toArray();
+        res.send(result);
+    });
+    
+      app.get('/services/:id', async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) }
+        const result = await serviceCollection.findOne(query);
         res.send(result);
   
   
       });
+
       app.get('/service/top-six', async (req, res) => {
         try {
             const result = await serviceCollection.aggregate([
