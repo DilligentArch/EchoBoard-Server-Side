@@ -47,7 +47,18 @@ async function run() {
   
   
       });
+      app.get('/service/top-six', async (req, res) => {
+        try {
+            const result = await serviceCollection.aggregate([
+                { $sample: { size: 6 } } // Randomly selects 6 documents
+            ]).toArray();
     
+            res.send(result);
+        } catch (error) {
+            console.error('Error fetching random data:', error);
+            res.status(500).send({ message: 'Internal Server Error' });
+        }
+    });
     
 
       app.put("/services/:id", async (req, res) => {
