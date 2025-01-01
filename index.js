@@ -118,7 +118,14 @@ async function run() {
       const result = await reviewCollection.insertOne(newReview);
       res.send(result);
     });
-      
+    app.get('/reviews/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { id }
+      const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+
+
+    });
 
 
 
