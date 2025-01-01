@@ -107,6 +107,17 @@ async function run() {
         res.send(result);
   
       })
+
+
+
+
+
+      const reviewCollection = client.db('ServiceDB').collection('Reviews')
+    app.post('/reviews', async (req, res) => {
+      const newReview = req.body;
+      const result = await reviewCollection.insertOne(newReview);
+      res.send(result);
+    });
       
 
 
