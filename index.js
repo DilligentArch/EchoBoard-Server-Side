@@ -118,14 +118,53 @@ async function run() {
       const result = await reviewCollection.insertOne(newReview);
       res.send(result);
     });
-    app.get('/reviews/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { id }
-      const result = await reviewCollection.find(query).toArray();
+    
+    app.get('/reviews', async (req, res) => {
+      const { email } = req.query;
+  
+      if (email) {
+          const query = { userEmail: email };
+          const result = await reviewCollection.find(query).toArray();
+          return res.send(result);
+      }
+  
+      const cursor = reviewCollection.find();
+      const result = await cursor.toArray();
       res.send(result);
+  });
+  
+  app.get('/reviews/:id', async (req, res) => {
+    const id = req.params.id;
+    const query = { id }
+    const result = await reviewCollection.find(query).toArray();
+    res.send(result);
 
 
-    });
+  });
+  app.put("/reviews/:id", async (req, res) => {
+    const id = req.params.id; // Extract the review ID from the URL params
+    const reviewData = req.body; // Get updated review data from the request body
+  
+    
+  
+    const filter = { _id: new ObjectId(id) }; // Filter by the unique _id
+    const updateReview = {
+      $set: {
+        review: reviewData.review,
+        rating: reviewData.rating,
+      },
+    };
+  
+    
+      const result = await reviewCollection.updateOne(filter, updateReview); // Update the specific review
+    
+      res.send(result);
+  
+  });
+  
+  
+  
+  
 
 
 
