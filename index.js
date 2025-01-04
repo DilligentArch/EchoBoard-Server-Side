@@ -161,6 +161,31 @@ async function run() {
       res.send(result);
   
   });
+  app.delete("/reviews/:id", async (req, res) => {
+    const id = req.params.id;
+  
+    try {
+      // Check if the ID is valid
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid review ID." });
+      }
+  
+      // Define the filter for the review to be deleted
+      const filter = { _id: new ObjectId(id) };
+  
+      // Perform the deletion
+      const result = await reviewCollection.deleteOne(filter);
+  
+      if (result.deletedCount > 0) {
+        res.status(200).send({ message: "Review deleted successfully.", deletedCount: result.deletedCount });
+      } else {
+        res.status(404).send({ message: "Review not found or already deleted." });
+      }
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      res.status(500).send({ message: "Failed to delete review. Please try again." });
+    }
+  });
   
   
   
