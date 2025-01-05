@@ -2,15 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
-const port=process.env.PORT || 5000;
+const port = process.env.PORT || 5000;
 require('dotenv').config();
 
-app.use(cors());
+app.use(cors({ origin: ['http://localhost:5173'], credentials: true }));
 app.use(express.json());
-
-
-
-
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2x9eo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -20,200 +16,183 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    const serviceCollection = client.db('ServiceDB').collection('services')
+    // Database collections
+    const serviceCollection = client.db('ServiceDB').collection('services');
+    const reviewCollection = client.db('ServiceDB').collection('Reviews');
+
+    // ** Services Endpoints **
+
+    // Add a new service
     app.post('/services', async (req, res) => {
       const newService = req.body;
       const result = await serviceCollection.insertOne(newService);
       res.send(result);
     });
-    
+
+    // Get all services or filter by `addedBy`
     app.get('/services', async (req, res) => {
-        const cursor = serviceCollection.find();
-        const result = await cursor.toArray();
-        res.send(result);
-      });
-
-      app.get('/services', async (req, res) => {
-        const { email } = req.query;
-    
-        if (email) {
-            const query = { addedBy: email };
-            const result = await serviceCollection.find(query).toArray();
-            return res.send(result);
-        }
-    
-        const cursor = serviceCollection.find();
-        const result = await cursor.toArray();
-        res.send(result);
+      const { addedBy } = req.query;
+      const query = addedBy ? { addedBy } : {};
+      const result = await serviceCollection.find(query).toArray();
+      res.send(result);
     });
-    
-      app.get('/services/:id', async (req, res) => {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) }
-        const result = await serviceCollection.findOne(query);
-        res.send(result);
-  
-  
-      });
 
-      app.get('/service/top-six', async (req, res) => {
-        try {
-            const result = await serviceCollection.aggregate([
-                { $sample: { size: 6 } } // Randomly selects 6 documents
-            ]).toArray();
-    
-            res.send(result);
-        } catch (error) {
-            console.error('Error fetching random data:', error);
-            res.status(500).send({ message: 'Internal Server Error' });
-        }
+    // Get a specific service by ID
+    app.get('/services/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await serviceCollection.findOne(query);
+      res.send(result);
     });
-    
 
-      app.put("/services/:id", async (req, res) => {
-        const id = req.params.id;
-        const review = req.body;
-  
-        const filter = { _id: new ObjectId(id) };
-        const options = { upsert: true };
-        const updateReview = {
-          $set: {
-            image: review.image,
-            title: review.title,
-            companyName: review.companyName,
-            website: review.website,
-            description: review.description,
-            category: review.category,
-            price: review.price,
-           
-          
-          },
-        };
-  
-        const result = await serviceCollection.updateOne(filter, updateReview, options);
+    // Get top six random services
+    app.get('/service/top-six', async (req, res) => {
+      try {
+        const result = await serviceCollection.aggregate([{ $sample: { size: 6 } }]).toArray();
         res.send(result);
-      });
+      } catch (error) {
+        console.error('Error fetching random data:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+      }
+    });
 
-      app.delete('/services/:id', async (req, res) => {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) }
-        const result = await serviceCollection.deleteOne(query);
-        res.send(result);
-  
-      })
+    // Update a specific service
+    app.put('/services/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedService = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = { $set: updatedService };
+      const result = await serviceCollection.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
 
+    // Delete a specific service
+    app.delete('/services/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await serviceCollection.deleteOne(query);
+      res.send(result);
+    });
 
+    // ** Reviews Endpoints **
 
-
-
-      const reviewCollection = client.db('ServiceDB').collection('Reviews')
+    // Add a new review
     app.post('/reviews', async (req, res) => {
       const newReview = req.body;
       const result = await reviewCollection.insertOne(newReview);
       res.send(result);
     });
-    
+
+    // Get all reviews or filter by user email
     app.get('/reviews', async (req, res) => {
       const { email } = req.query;
-  
-      if (email) {
-          const query = { userEmail: email };
-          const result = await reviewCollection.find(query).toArray();
-          return res.send(result);
-      }
-  
-      const cursor = reviewCollection.find();
-      const result = await cursor.toArray();
+      const query = email ? { userEmail: email } : {};
+      const result = await reviewCollection.find(query).toArray();
       res.send(result);
-  });
-  
-  app.get('/reviews/:id', async (req, res) => {
-    const id = req.params.id;
-    const query = { id }
-    const result = await reviewCollection.find(query).toArray();
-    res.send(result);
+    });
 
-
-  });
-  app.put("/reviews/:id", async (req, res) => {
-    const id = req.params.id; // Extract the review ID from the URL params
-    const reviewData = req.body; // Get updated review data from the request body
-  
-    
-  
-    const filter = { _id: new ObjectId(id) }; // Filter by the unique _id
-    const updateReview = {
-      $set: {
-        review: reviewData.review,
-        rating: reviewData.rating,
-      },
-    };
-  
-    
-      const result = await reviewCollection.updateOne(filter, updateReview); // Update the specific review
-    
+    // Get reviews for a specific service by ID
+    app.get('/reviews/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { id };
+      const result = await reviewCollection.find(query).toArray();
       res.send(result);
-  
-  });
-  app.delete("/reviews/:id", async (req, res) => {
-    const id = req.params.id;
-  
-    try {
-      // Check if the ID is valid
-      if (!ObjectId.isValid(id)) {
-        return res.status(400).send({ message: "Invalid review ID." });
-      }
-  
-      // Define the filter for the review to be deleted
+    });
+
+    // Update a specific review
+    app.put('/reviews/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedReview = req.body;
       const filter = { _id: new ObjectId(id) };
-  
-      // Perform the deletion
-      const result = await reviewCollection.deleteOne(filter);
-  
-      if (result.deletedCount > 0) {
-        res.status(200).send({ message: "Review deleted successfully.", deletedCount: result.deletedCount });
-      } else {
-        res.status(404).send({ message: "Review not found or already deleted." });
+      const updateDoc = { $set: updatedReview };
+      const result = await reviewCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.delete("/reviews/:id", async (req, res) => {
+      const id = req.params.id;
+    
+      try {
+        // Check if the ID is valid
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid review ID." });
+        }
+    
+        // Define the filter for the review to be deleted
+        const filter = { _id: new ObjectId(id) };
+    
+        // Perform the deletion
+        const result = await reviewCollection.deleteOne(filter);
+    
+        if (result.deletedCount > 0) {
+          res.status(200).send({ message: "Review deleted successfully.", deletedCount: result.deletedCount });
+        } else {
+          res.status(404).send({ message: "Review not found or already deleted." });
+        }
+      } catch (error) {
+        console.error("Error deleting review:", error);
+        res.status(500).send({ message: "Failed to delete review. Please try again." });
       }
-    } catch (error) {
-      console.error("Error deleting review:", error);
-      res.status(500).send({ message: "Failed to delete review. Please try again." });
-    }
-  });
-  
-  
-  
-  
+    });
 
+    app.post("/users", async (req, res) => {
+      const { email, name, image } = req.body;
+    
+      try {
+        // Check if a user with the given email already exists
+        const existingUser = await client
+          .db("ServiceDB")
+          .collection("Users")
+          .findOne({ email });
+    
+        if (existingUser) {
+          return res.status(200).send({ message: "User already exists" });
+        }
+    
+        // Add the new user to the database
+        const newUser = { email, name, image, createdAt: new Date().toISOString() };
+        const result = await client.db("ServiceDB").collection("Users").insertOne(newUser);
+    
+        res.status(201).send({ message: "User added successfully", result });
+      } catch (error) {
+        console.error("Error adding user:", error);
+        res.status(500).send({ message: "Failed to add user" });
+      }
+    });
+    app.get("/users", async (req, res) => {
+      try {
+        const users = await client.db("ServiceDB").collection("Users").find().toArray();
+        res.status(200).send(users);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        res.status(500).send({ message: "Failed to fetch users" });
+      }
+    });
+    
 
-
-
-    await client.connect();
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // MongoDB connection
+    // await client.connect();
+    // console.log('Connected to MongoDB successfully!');
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
   }
 }
+
 run().catch(console.dir);
 
-
-
-
-
+// Server test route
 app.get('/', (req, res) => {
-    res.send('server connected');
+  res.send('Server connected');
 });
 
-
+// Start the server
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
 });
